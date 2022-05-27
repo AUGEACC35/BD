@@ -1,0 +1,389 @@
+[Create event]
+timer = 900;
+version = 1;
+
+[Step event]
+timer--;
+
+if (global.algo == 0)////////////////////pseudo-random
+{
+    if timer<=0
+    {
+        randomize();
+    
+        ini_open("game.ini");
+        
+        //randama daartinė versija
+        for (var i = 0; i<27; i++)
+        {
+            if ini_section_exists("Version "+string(i))
+            {
+                version = i; 
+            }
+            
+        }
+        
+        if version+1 < 27 //Galutinė versija
+        {
+            if ini_section_exists("Version 1")
+            {
+                exists = 1; //Laikinas kintamasis
+                while (exists = 1)
+                {
+                    var _BA_idle_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_enemy_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_shooting_movement = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    
+                    exists = 0;
+                    
+                    for (var i = 1; i<=27; i++)
+                    {
+                    //show_message(version)
+                        BA_idle_aim = ini_read_real(string("Version "+string(i)),"BA_idle_aim",-1);//skaitoma iš failo
+                        BA_enemy_aim = ini_read_real("Version "+string(i),"BA_enemy_aim",-1);//skaitoma iš failo
+                        BA_shooting_movement = ini_read_real("Version "+string(i),"BA_shooting_movement",-1);//skaitoma iš failo
+                        
+                        if (_BA_idle_aim = BA_idle_aim
+                        && _BA_enemy_aim = BA_enemy_aim
+                        && _BA_shooting_movement = BA_shooting_movement)
+                        {
+                            exists = 1;
+                            break;
+                        }
+                    }
+        
+                }
+                ini_write_real("Version "+string(version+1),"BA_idle_aim",_BA_idle_aim);
+                ini_write_real("Version "+string(version+1),"BA_enemy_aim",_BA_enemy_aim);
+                ini_write_real("Version "+string(version+1),"BA_shooting_movement",_BA_shooting_movement);
+                ini_write_real("Version "+string(version+1),"Score",(score/2));
+                ini_write_real("Version "+string(version+1),"Time",(900-timer));
+            }
+            else
+            {
+                ini_write_real("Version 1","BA_idle_aim",0)
+                ini_write_real("Version 1","BA_enemy_aim",0)
+                ini_write_real("Version 1","BA_shooting_movement",0)
+                ini_write_real("Version 1","Score",(score/2));
+                ini_write_real("Version 1","Time",(900-timer));
+            }
+        }
+        else
+        {
+            show_message("PASKUTINĖ VERSIJA BUVO SUKURTA")
+            //file_delete(game);
+        }
+        
+        ini_close()
+    
+        game_restart();
+    }
+}
+else if (global.algo == 1)//////////////////// weight-directed
+{
+    if timer<=0
+    {
+        randomize();
+    
+        ini_open("game.ini");
+        
+        //randama daartinė versija
+        for (var i = 0; i<27; i++)
+        {
+            if ini_section_exists("W-Version "+string(i))
+            {
+                version = i; 
+            }
+            
+        }
+        
+        if version+1 < 27 //27 yra Galutinė versija
+        {
+            if ini_section_exists("W-Version 1")
+            {
+                exists = 1; //Laikinas kintamasis
+                
+                Weight_idle_aim = ini_read_real("W-Version "+string(version),"Weight_idle_aim",0);//skaitoma iš failo
+                Weight_enemy_aim = ini_read_real("W-Version "+string(version),"Weight_enemy_aim",0);//skaitoma iš failo
+                Weight_shooting_movement = ini_read_real("W-Version "+string(version),"Weight_shooting_movement",0);//skaitoma iš failo
+
+                BA_idle_aim = ini_read_real(string("W-Version "+string(version)),"BA_idle_aim",-1);//skaitoma iš failo
+                BA_enemy_aim = ini_read_real("W-Version "+string(version),"BA_enemy_aim",-1);//skaitoma iš failo
+                BA_shooting_movement = ini_read_real("W-Version "+string(version),"BA_shooting_movement",-1);//skaitoma iš failo
+                 
+                //////////////////////////////// FIRST WEIGHT //   
+                if Weight_idle_aim == 0
+                && Weight_enemy_aim == 0
+                && Weight_shooting_movement == 0
+                {
+                    var _BA_idle_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_enemy_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_shooting_movement = irandom(2); //Renkasi tarp 0, 1 ir 2
+                
+                    var parameter = irandom(2);
+                    if parameter == 0
+                    {
+                        while (_BA_idle_aim == BA_idle_aim)
+                        {
+                            _BA_idle_aim = irandom(2);
+                        }
+                    }
+                    else if parameter == 1
+                    {
+                        while (_BA_enemy_aim == BA_enemy_aim)
+                        {
+                            _BA_enemy_aim = irandom(2);
+                        }
+                    }
+                    else if parameter == 2
+                    {
+                        while (_BA_shooting_movement == BA_shooting_movement)
+                        {
+                            _BA_shooting_movement = irandom(2);
+                        }
+                    }
+                    
+                    ini_write_real("W-Version "+string(version+1),"BA_idle_aim",_BA_idle_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_enemy_aim",_BA_enemy_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_shooting_movement",_BA_shooting_movement);
+                    ini_write_real("W-Version "+string(version+1),"Score",(score/2));
+                    ini_write_real("W-Version "+string(version+1),"Time",(900-timer));
+                }
+                else //////////////////////////////// SECOND WEIGHT //
+                if (Weight_idle_aim == 0
+                && Weight_enemy_aim == 0)
+                or
+                (Weight_idle_aim == 0
+                && Weight_shooting_movement == 0)
+                or
+                (Weight_enemy_aim == 0 
+                && Weight_shooting_movement == 0)
+                {
+                    var _BA_idle_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_enemy_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_shooting_movement = irandom(2); //Renkasi tarp 0, 1 ir 2
+                
+                    if (Weight_idle_aim == 0
+                    && Weight_enemy_aim == 0)
+                        var parameter = choose(0,1);
+                    else if (Weight_idle_aim == 0
+                    && Weight_shooting_movement == 0)
+                        var parameter = choose(0,2);
+                    else if (Weight_enemy_aim == 0 
+                    && Weight_shooting_movement == 0)
+                        var parameter = choose(1,2);
+                    
+                    if parameter == 0
+                    {
+                        while (_BA_idle_aim == BA_idle_aim)
+                        {
+                            _BA_idle_aim = irandom(2);
+                        }
+                    }
+                    else if parameter == 1
+                    {
+                        while (_BA_enemy_aim == BA_enemy_aim)
+                        {
+                            _BA_enemy_aim = irandom(2);
+                        }
+                    }
+                    else if parameter == 2
+                    {
+                        while (_BA_shooting_movement == BA_shooting_movement)
+                        {
+                            _BA_shooting_movement = irandom(2);
+                        }
+                    }
+                    
+                    ini_write_real("W-Version "+string(version+1),"BA_idle_aim",_BA_idle_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_enemy_aim",_BA_enemy_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_shooting_movement",_BA_shooting_movement);
+                    ini_write_real("W-Version "+string(version+1),"Score",(score/2));
+                    ini_write_real("W-Version "+string(version+1),"Time",(900-timer));
+                }
+                else if (Weight_idle_aim == 0
+                or Weight_enemy_aim == 0
+                or Weight_shooting_movement == 0
+                )
+                {
+                    var _BA_idle_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_enemy_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                    var _BA_shooting_movement = irandom(2); //Renkasi tarp 0, 1 ir 2
+                
+                    if (Weight_idle_aim == 0)
+                        var parameter = 0;
+                    else if (Weight_enemy_aim == 0)
+                        var parameter = 1;
+                    else if (Weight_shooting_movement == 0)
+                        var parameter = 2;
+                    
+                    if parameter == 0
+                    {
+                        while (_BA_idle_aim == BA_idle_aim)
+                        {
+                            _BA_idle_aim = irandom(2);
+                        }
+                    }
+                    else if parameter == 1
+                    {
+                        while (_BA_enemy_aim == BA_enemy_aim)
+                        {
+                            _BA_enemy_aim = irandom(2);
+                        }
+                    }
+                    else if parameter == 2
+                    {
+                        while (_BA_shooting_movement == BA_shooting_movement)
+                        {
+                            _BA_shooting_movement = irandom(2);
+                        }
+                    }
+                    ini_write_real("W-Version "+string(version+1),"BA_idle_aim",_BA_idle_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_enemy_aim",_BA_enemy_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_shooting_movement",_BA_shooting_movement);
+                    ini_write_real("W-Version "+string(version+1),"Score",(score/2));
+                    ini_write_real("W-Version "+string(version+1),"Time",(900-timer));
+                }
+                else
+                {
+                    
+                    var _max_weight = -900; //didziausia imanoma nepazanga
+                    
+                    if (Weight_idle_aim > _max_weight)
+                    {
+                        _max_weight = Weight_idle_aim;
+                        parameter = 0;
+                    }
+                    if (Weight_enemy_aim > _max_weight)
+                    {
+                        _max_weight = Weight_enemy_aim;
+                        parameter = 1;
+                    }
+                    if (Weight_shooting_movement > _max_weight)
+                    {
+                        _max_weight = Weight_shooting_movement;
+                        parameter = 2;
+                    }
+                    
+                    var _BA_idle_aim = ini_read_real(string("W-Version "+string(version)),"BA_idle_aim",-1);//skaitoma iš failo
+                    var _BA_enemy_aim = ini_read_real("W-Version "+string(version),"BA_enemy_aim",-1);//skaitoma iš failo
+                    var _BA_shooting_movement = ini_read_real("W-Version "+string(version),"BA_shooting_movement",-1);//skaitoma iš failo
+                    
+                    exists = 1; //Laikinas kintamasis
+                    
+                    for (var k=0; k<3; k++)
+                    {
+                        exists = 0;
+                    
+                        if (parameter == 0)
+                        _BA_idle_aim = k;
+                        else if (parameter == 1)
+                        _BA_enemy_aim = k;
+                        else if (parameter == 2)
+                        _BA_shooting_movement = k;
+
+                        for (var i = 1; i<=27; i++)
+                        {
+                        //show_message(version)
+                            BA_idle_aim = ini_read_real(string("W-Version "+string(i)),"BA_idle_aim",-1);//skaitoma iš failo
+                            BA_enemy_aim = ini_read_real("W-Version "+string(i),"BA_enemy_aim",-1);//skaitoma iš failo
+                            BA_shooting_movement = ini_read_real("W-Version "+string(i),"BA_shooting_movement",-1);//skaitoma iš failo
+                            
+                            if (_BA_idle_aim = BA_idle_aim
+                            && _BA_enemy_aim = BA_enemy_aim
+                            && _BA_shooting_movement = BA_shooting_movement)
+                            {
+                                exists = 1;
+                                break;
+                            }
+                        }
+                        
+                        if exists == 0
+                        {
+                            break;
+                        }
+                    }
+                    
+                    if exists == 1
+                    {
+                        while (exists = 1)
+                        {
+                            var _BA_idle_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                            var _BA_enemy_aim = irandom(2); //Renkasi tarp 0, 1 ir 2
+                            var _BA_shooting_movement = irandom(2); //Renkasi tarp 0, 1 ir 2
+                            
+                            exists = 0;
+                            
+                            for (var i = 1; i<=27; i++)
+                            {
+                            //show_message(version)
+                                BA_idle_aim = ini_read_real(string("W-Version "+string(i)),"BA_idle_aim",-1);//skaitoma iš failo
+                                BA_enemy_aim = ini_read_real("W-Version "+string(i),"BA_enemy_aim",-1);//skaitoma iš failo
+                                BA_shooting_movement = ini_read_real("W-Version "+string(i),"BA_shooting_movement",-1);//skaitoma iš failo
+                                
+                                if (_BA_idle_aim = BA_idle_aim
+                                && _BA_enemy_aim = BA_enemy_aim
+                                && _BA_shooting_movement = BA_shooting_movement)
+                                {
+                                    exists = 1;
+                                    break;
+                                }
+                            }
+                
+                        }
+                    }
+                
+                    //parameter = -1;
+                    
+                    ini_write_real("W-Version "+string(version+1),"BA_idle_aim",_BA_idle_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_enemy_aim",_BA_enemy_aim);
+                    ini_write_real("W-Version "+string(version+1),"BA_shooting_movement",_BA_shooting_movement);
+                    ini_write_real("W-Version "+string(version+1),"Score",(score/2));
+                    ini_write_real("W-Version "+string(version+1),"Time",(900-timer));
+                }
+                
+                if parameter == 0
+                {
+                    ini_write_real("W-Version "+string(version+1),"Weight_idle_aim",((score/2)-ini_read_real("W-Version "+string(version),"Score",0)));
+                    ini_write_real("W-Version "+string(version+1),"Weight_enemy_aim",ini_read_real("W-Version "+string(version),"Weight_enemy_aim",0));
+                    ini_write_real("W-Version "+string(version+1),"Weight_shooting_movement",ini_read_real("W-Version "+string(version),"Weight_shooting_movement",0));
+                }
+                else if parameter == 1
+                {
+                    ini_write_real("W-Version "+string(version+1),"Weight_idle_aim",ini_read_real("W-Version "+string(version),"Weight_idle_aim",0));
+                    ini_write_real("W-Version "+string(version+1),"Weight_enemy_aim",((score/2)-ini_read_real("W-Version "+string(version),"Score",0)));
+                    ini_write_real("W-Version "+string(version+1),"Weight_shooting_movement",ini_read_real("W-Version "+string(version),"Weight_shooting_movement",0));
+                }
+                else if parameter == 2
+                {
+                    ini_write_real("W-Version "+string(version+1),"Weight_idle_aim",ini_read_real("W-Version "+string(version),"Weight_idle_aim",0));
+                    ini_write_real("W-Version "+string(version+1),"Weight_enemy_aim",ini_read_real("W-Version "+string(version),"Weight_enemy_aim",0));
+                    ini_write_real("W-Version "+string(version+1),"Weight_shooting_movement",((score/2)-ini_read_real("W-Version "+string(version),"Score",0)));
+                }
+            }
+            else
+            {
+                ini_write_real("W-Version 1","BA_idle_aim",irandom(2));
+                ini_write_real("W-Version 1","BA_enemy_aim",irandom(2));
+                ini_write_real("W-Version 1","BA_shooting_movement",irandom(2));
+                ini_write_real("W-Version 1","Weight_idle_aim",0);
+                ini_write_real("W-Version 1","Weight_enemy_aim",0);
+                ini_write_real("W-Version 1","Weight_shooting_movement",0);
+                ini_write_real("W-Version 1","Score",(score/2));
+                ini_write_real("W-Version 1","Time",(900-timer));
+            }
+        }
+        else
+        {
+            show_message("PASKUTINĖ VERSIJA BUVO SUKURTA")
+            //file_delete(game);
+        }
+        
+        ini_close()
+    
+        game_restart();
+    }
+}
+
+[Draw event]
+draw_text(400,64,"Liko laiko: "+string(timer/60)+"s");

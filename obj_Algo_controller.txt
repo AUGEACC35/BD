@@ -1,0 +1,61 @@
+[Create event]
+image_speed=0;
+global.algo = 0;
+if file_exists("game.ini")
+{
+    ini_open("game.ini")
+    global.algo = ini_read_real("OPTIONS","Algo",0);
+    ini_close();
+}
+else
+{
+    ini_open("game.ini")
+    ini_write_real("OPTIONS","Algo",0);
+    ini_close();
+}
+
+
+[Step event]
+if mouse_check_button_pressed(mb_left)
+&& collision_point(mouse_x,
+mouse_y,
+obj_Algo_Controller,
+true,
+false)
+{
+    if global.algo == 0
+    {
+        global.algo = 1;
+        ini_open("game.ini")
+        ini_write_real("OPTIONS","Algo",1);
+        ini_close();
+    }
+    else if global.algo == 1
+    {
+        global.algo = 0;
+        ini_open("game.ini")
+        ini_write_real("OPTIONS","Algo",0);
+        ini_close();
+    }
+}
+
+if global.algo == 0
+{
+    image_index = 0;
+}
+else if global.algo == 1
+{
+    image_index = 1;
+}
+
+[Draw event]
+if global.algo == 0
+{
+    draw_text(x-450,y-16, "metodas: Pseudo-random generation");
+}
+else if global.algo == 1
+{
+    draw_text(x-450,y-16, "metodas: Weight-Direction generation");
+}
+
+draw_self();

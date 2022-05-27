@@ -1,0 +1,555 @@
+[Create event]
+state = "seeking enemy goon";
+
+recoil_offset_x = 0;
+recoil_offset_y = 0;
+
+image_speed = 0.3
+hp=500;
+hp_max=500;
+dir=-1;
+jumpspeed = 5;
+movespeed = 2;
+idlespeed=2;
+grav = 0.25;
+hsp=0;
+vsp=0;
+spd=3;//varies randomly
+alarm[0] = 1;//chooses checkpoint
+step_aside=false;//collides other goon
+//destination=id;//non existant destination
+destination_x=0;//0 far from player
+//temp_destination=id;//non existant temporary destination
+//goes_up=false;//neither up or down
+
+capture_point = undefined; //0-none, 1-A, 2-B, 3-C, 4-D
+
+stunned=false;
+//state = "walking towards goal"//choose("left", "right");
+climb_time=irandom(1500);
+stun_time=0;
+
+idle=true;
+combat=true;
+locked=false;
+attacking=false;
+default_reaction=120;
+walk_reaction=default_reaction;
+default_hit_reaction=60;
+hit_reaction=default_hit_reaction;
+
+default_attack_time=90;
+attack_time=default_attack_time;
+indicator_ID=0;
+
+respawn_time = 0;//when respawn time is 0 player can play
+
+var _cone=instance_create(x,y-25,obj_sight_cone);
+_cone.x=x;
+_cone.y=y-25;
+_cone.owner=id;
+player_id = id;
+max_length = sqrt(room_height*room_height+room_width*room_width);
+
+locked_controls = true;
+
+lx = x;//laser end
+ly = y;//laser end
+
+destination_angle = image_angle;
+seek_aim_counter = irandom_range(30, 180);
+
+target = noone;//goon or hero
+
+
+//Arrays of behaviour:
+BA_idle_aim = 0             //0 - random; 1 - big portion; 2 - small portion;
+BA_enemy_aim = 0            //0 - head; 1 - legs; 2 - stomach;
+BA_shooting_movement = 2    //0 - stand still; 1 - move towards; 2 - move outwards
+
+randomize(); //Sugeneruojama sėkla (seed)
+
+[Step event]
+//testing zone
+show_debug_message(string(id)+" X: "+string(x)+" "+string(state));
+show_debug_message(string(id)+" Y: "+string(y)+" "+string(state));
+//////////////////////////////
+
+hsp=0;
+vsp=0;
+
+/////////////Virtual controls ///////////////// could be given to player?
+if !(locked_controls)
+{
+    ctrl_left = bool(-gamepad_axis_value(0, gp_axislh));
+    ctrl_right = bool(gamepad_axis_value(0, gp_axislh));
+    ctrl_up = bool(-gamepad_axis_value(0, gp_axislv)); //test
+    ctrl_down = bool(gamepad_axis_value(0, gp_axislv)); //test
+    ctrl_R2 = bool(gamepad_button_value(0, gp_shoulderrb));
+    ctrl_L2 = bool(gamepad_button_value(0, gp_shoulderlb));
+    //gamepad_button_check(0,gp_padl);
+    //gamepad_button_check(0,gp_padr);
+    
+    key_right = keyboard_check(ord("D")) || ctrl_right;
+    key_left = keyboard_check(ord("A")) || ctrl_left;
+    key_up = keyboard_check(ord("W")) || ctrl_up;
+    key_down = keyboard_check(ord("S")) || ctrl_down;
+    key_jump = keyboard_check_pressed(vk_space) || gamepad_button_check_pressed(0,gp_face1);
+    key_fly = keyboard_check(vk_space) || gamepad_button_check(0,gp_face1);
+    key_run = keyboard_check(vk_lshift) || ctrl_R2;
+    key_action = keyboard_check_pressed(ord("F")) || ctrl_L2;
+    key_attack = mouse_check_button_pressed(mb_left) || gamepad_button_check_pressed(0,gp_face3);
+    key_reload = keyboard_check_pressed(ord("R")) || gamepad_button_check_pressed(0,gp_face3);
+    key_attack_cont = mouse_check_button(mb_left) || gamepad_button_check(0,gp_face3);
+    key_counter = mouse_check_button_pressed(mb_right);
+    key_takedown = key_counter;
+    key_stun = mouse_check_button_pressed(mb_middle);
+    key_gadget1 = keyboard_check_pressed(ord("1")) || keyboard_check_pressed(ord(vk_numpad4)) || gamepad_button_check_pressed(0, gp_padl)//gamepad left DPAD
+    key_gadget2 = keyboard_check_pressed(ord("2")) || keyboard_check_pressed(ord(vk_numpad6)) || gamepad_button_check_pressed(0, gp_padr)//gamepad right DPAD
+    key_aim = gamepad_button_check(0,gp_shoulderl);
+    key_shoot = mouse_check_button(mb_left) || gamepad_button_check(0,gp_shoulderr);
+    key_shoot_tap = mouse_check_button_pressed(mb_left) || gamepad_button_check_pressed(0,gp_shoulderr)
+}
+else //Controls will not respond
+{
+    ctrl_left = 0;
+    ctrl_right = 0;
+    ctrl_up = 0;
+    ctrl_down = 0;
+    ctrl_R2 = 0;
+    ctrl_L2 = 0;
+    
+    //gamepad_button_check(0,gp_padl);
+    //gamepad_button_check(0,gp_padr);
+    
+    key_right = 0;
+    key_left = 0;
+    key_up = 0;
+    key_down = 0;
+    key_jump = 0;
+    key_fly = 0;
+    key_run = 0;
+    key_vantage = 0;
+    key_attack = 0;
+    key_attack_cont = 0;
+    key_counter = 0;
+    key_takedown = 0;
+    key_stun = 0;
+}
+/////////////Virtual controls END ///////////////// 
+
+if locked == false
+{
+    switch (state)
+    {
+        case "shooting_enemy":
+        {//replace with ENUMS
+            if BA_shooting_movement == 1
+            {
+                if !place_meeting(x+spd * sign(target.x-x), y, obj_wall)
+                {
+                    hsp = spd * sign(target.x-x);
+                }
+            }
+            else if BA_shooting_movement == 2
+            {
+                if !place_meeting(x+spd * sign(target.x+x), y, obj_wall)
+                {
+                    hsp = spd * sign(target.x+x);
+                }
+            }
+        
+            var _bullet = instance_create(x, y-16, obj_bullet);//obj_bullet
+            //_bullet.sound=snd_EMKA_24;
+            var _temp_image_angle = 0;//image_angle+(irandom_range(-_temp_spread,_temp_spread));
+            
+            _bullet.target=noone;//noone
+            _bullet.damage=15;
+            _bullet.sound=noone;
+            
+            var _range = range_finder(x, y-16, _temp_image_angle, max_length, obj_online_player_parent, obj_solid_for_bullets,true,true,1)
+            {
+                //show_message(_range);
+            }
+            
+            /*lx = x + lengthdir_x(_range+1, _temp_image_angle);
+            ly = y -16 + lengthdir_y(_range+1, _temp_image_angle);
+            
+            if collision_point(lx, ly, obj_target_for_local_enemy_bots, true, true)
+            && collision_point(lx, ly, obj_target_for_local_enemy_bots, true, true)!=id
+            {
+                //_bullet.target = (collision_point(lx, ly, obj_target_for_local_enemy_bots, true, true)).player_id;
+                _bullet.target = (collision_point(lx, ly, obj_target_for_local_enemy_bots, true, true));
+            }*/
+            
+            if target != noone
+            {
+                var _dist_to_enemy = distance_to_object(target);
+            
+                recoil_offset_x += (choose(-1,1)*irandom_range(1, _dist_to_enemy))/100;
+                recoil_offset_y += (choose(-1,1)*irandom_range(1, _dist_to_enemy))/100;
+            
+                lx=target.x+recoil_offset_x;
+                ly=target.y+recoil_offset_y;
+                
+                if BA_enemy_aim == 0
+                {
+                    ly-=32;//aim to head
+                }
+                else if BA_enemy_aim == 2
+                {
+                    ly+=32;//aim to legs
+                }
+                
+                
+                if (collision_point(lx, ly, target,true, true))
+                {
+                    _bullet.target = target;
+                    score++;
+                }
+                
+                //_bullet.target = target;
+                
+                if collision_line(x,y,lx,ly,obj_solid_for_bullets,true,true)
+                {
+                    //target = noone;
+                    //state = "seeking enemy goon"
+                }
+            }
+            else
+            {
+                
+            }
+            
+            _bullet.lx=other.lx;
+            _bullet.ly=other.ly;
+            _bullet.sound=snd_EMKA_24;
+            
+            gms_instance_sync_var_add("target", _bullet.target);
+            gms_instance_sync_var_add("damage", _bullet.damage/12);
+            gms_instance_sync_var_add("lx", _bullet.lx);
+            gms_instance_sync_var_add("ly", _bullet.ly);
+            gms_instance_sync_var_add("sound", _bullet.sound);
+            gms_instance_sync_var_add("owner", id);
+            //show_message(gms_self_playerid())
+            
+            gms_instance_sync(_bullet, is_onetime);
+        } break;
+            
+        case "walking towards goal":
+        { //replace with ENUMS
+            if (capture_point!=undefined)
+            {
+                if abs(capture_point.x-x) > spd
+                {
+                    hsp = spd * sign(capture_point.x-x)
+                }
+                
+                /*(!place_meeting(x,y,capture_point))
+                {
+                    state = "idle";
+                }*/
+            }
+            else
+            {
+                //state = "idle";
+                
+            }
+            ///////////resets recoil
+            if (recoil_offset_x!=0)
+            {
+                recoil_offset_x-=round(sign(recoil_offset_x));
+            }
+            if (recoil_offset_y!=0)
+            {
+                recoil_offset_y-=round(sign(recoil_offset_y));
+            }
+
+            //////////resets recoil END
+        } break;
+        
+        case "seeking enemy goon":
+        { //replace with ENUMS
+            if BA_idle_aim == 0
+            {
+                seek_aim_counter--;
+            }
+            //show_debug_message(seek_aim_counter)
+            else if BA_idle_aim == 1
+            {
+                image_xscale=sign(x-room_width/2)
+            }
+            else if BA_idle_aim == 2
+            {
+                image_xscale=-sign(x-room_width/2)
+            }
+            
+            if image_xscale == 0
+            {
+                image_scale = choose(-1, 1);
+            }
+        } break;
+    }
+     
+    
+    if (vsp < 10)
+    vsp += grav;
+
+    if (place_meeting(x,y+1,obj_wall))//if on the ground
+    {
+        vsp = key_jump * -jumpspeed;
+    }
+    else
+    {
+        if (key_fly)
+        {
+            legs_si=spr_Lucius_fly;
+        }
+    }    
+    
+    x += hsp; 
+}
+
+//Taking damage
+with(obj_bullet)
+{
+    if active==true
+    {
+        if target==other.id
+        {
+            other.hp-=damage;
+            active=false;
+            other.killer = owner;
+        }
+    }
+}
+with(obj_bullet_sh)
+{
+    if active==true
+    {
+        if target==other.id
+        {
+            other.hp-=damage;
+            active=false;
+            other.killer = owner;
+        }
+    }
+}
+with(obj_bullet_sh_slug)
+{
+    if active==true
+    {
+        if target==other.id
+        {
+            other.hp-=damage;
+            active=false;
+            other.killer = owner;
+        }
+    }
+}
+with(obj_bullet_sh_arrows)
+{
+    if active==true
+    {
+        if target==other.id
+        {
+            other.hp-=damage;
+            active=false;
+            other.killer = owner;
+        }
+    }
+}
+with(obj_bullet_sh_heavy)
+{
+    if active==true
+    {
+        if target==other.id
+        {
+            other.hp-=damage;
+            active=false;
+            other.killer = owner;
+        }
+    }
+}
+
+with (obj_nade_explosion)
+{
+    if active == true
+    {
+        if collision_circle(x,y,64,other,true,true)
+        {
+            show_message(100-point_distance(x,y,other.x,other.y)/3*2);
+            other.hp -= 100-point_distance(x,y,other.x,other.y)/3*2;
+        }
+        active = false;
+    }    
+}
+///Taking damage end////////////////////////
+
+//Death
+if hp<=0 
+{
+    locked = true;
+    //need death animation;
+    
+    if respawn_time <= 0 //when player dies
+    {
+        x =- 256;
+        y =- 256;
+        respawn_time = 300;
+        
+        /*var dsl;
+        dsl=ds_list_create();
+        ds_list_add(dsl,arg0);
+        ds_list_add(dsl,arg1);
+        ds_list_add(dsl,arg2);
+        ds_list_add(dsl,arg3);*/
+        
+        //gms_p2p_send(id,other_pl_id, EVENT_TYPE, EVENT PRIORITY or XP AMOUNT);
+        //0 = kill_confirmation
+        //gms_p2p_send(irandom(255), real(killer), 5, 105);
+        
+        killer_sprite_index = gms_other_get(killer, 'sprite_index');
+        killer_image_index = gms_other_get(killer, 'image_index');
+        killer_legs_si = gms_other_get(killer, 'legs_si');
+        
+        death_sprite_index = sprite_index;
+        death_image_index = image_index;
+    
+        gms_p2p_send(1, real(killer),100);
+        audio_play_sound(snd_death,1,0);
+    }
+    else
+    respawn_time -= 1;
+    
+    if respawn_time == 1//respawning at this times
+    {
+        hp = hp_max;
+        locked = false;
+        respawn_time = 0;
+        
+/*var _temp_intimidation = gms_global_get("o_intimidation");
+
+if _temp_intimidation+20>100
+gms_global_set("o_intimidation", 100)
+else
+gms_global_set("o_intimidation", _temp_intimidation+20)*/
+        
+        var _temp_respawn = 0;  // id of respawn
+        var _temp_respawn_count = 0; //number of goons around
+        var _temp_respawn_lowest = 0;    //id of respawn with lowest goon count so far 
+        var _temp_respawn_count_lowest = 15;    //lowest goon count found
+        with(obj_respawn_hero)//taking respawn and checking how many goons are around
+        {
+            _temp_respawn=id;
+            _temp_respawn_count=0;
+            with(obj_online_player_phantom_goon)
+            {
+                if _temp_respawn_count < _temp_respawn_count_lowest
+                {
+                    if collision_rectangle(x-64,y-512,x+64,y,_temp_respawn,false,true)
+                    {
+                        _temp_respawn_count += 1;
+                    }
+                }
+            }
+            if _temp_respawn_count < _temp_respawn_count_lowest
+            {
+                _temp_respawn_count_lowest = _temp_respawn_count;
+                _temp_respawn_lowest=id;
+            }
+        }
+        x = _temp_respawn_lowest.x;
+        y = _temp_respawn_lowest.y;
+    }
+}
+if hp<=0 
+{
+    locked = true;
+    //need death animation;
+    
+    if respawn_time <= 0 //when player dies
+    {
+        x =- 256;
+        y =- 256;
+        respawn_time = 300;
+        
+        /*var dsl;
+        dsl=ds_list_create();
+        ds_list_add(dsl,arg0);
+        ds_list_add(dsl,arg1);
+        ds_list_add(dsl,arg2);
+        ds_list_add(dsl,arg3);*/
+        
+        //gms_p2p_send(id,other_pl_id, EVENT_TYPE, EVENT PRIORITY or XP AMOUNT);
+        //0 = kill_confirmation
+        //gms_p2p_send(irandom(255), real(killer), 5, 105);
+        
+        killer_sprite_index = gms_other_get(killer, 'sprite_index');
+        killer_image_index = gms_other_get(killer, 'image_index');
+        killer_legs_si = gms_other_get(killer, 'legs_si');
+        
+        death_sprite_index = sprite_index;
+        death_image_index = image_index;
+    
+        gms_p2p_send(1, real(killer),100);
+        audio_play_sound(snd_death,1,0);
+    }
+    else
+    respawn_time -= 1;
+    
+    if respawn_time == 1//respawning at this time
+    {
+        hp = hp_max;
+        locked = false;
+        respawn_time = 0;
+        
+/*var _temp_intimidation = gms_global_get("o_intimidation");
+
+if _temp_intimidation+20>100
+gms_global_set("o_intimidation", 100)
+else
+gms_global_set("o_intimidation", _temp_intimidation+20)*/
+        
+        var _temp_respawn = 0;  // id of respawn
+        var _temp_respawn_count = 0; //number of goons around
+        var _temp_respawn_lowest = 0;    //id of respawn with lowest goon count so far 
+        var _temp_respawn_count_lowest = 15;    //lowest goon count found
+        with(obj_respawn_hero)//taking respawn and checking how many goons are around
+        {
+            _temp_respawn=id;
+            _temp_respawn_count=0;
+            with(obj_online_player_phantom_goon)
+            {
+                if _temp_respawn_count < _temp_respawn_count_lowest
+                {
+                    if collision_rectangle(x-64,y-512,x+64,y,_temp_respawn,false,true)
+                    {
+                        _temp_respawn_count += 1;
+                    }
+                }
+            }
+            if _temp_respawn_count < _temp_respawn_count_lowest
+            {
+                _temp_respawn_count_lowest = _temp_respawn_count;
+                _temp_respawn_lowest=id;
+            }
+        }
+        x = _temp_respawn_lowest.x;
+        y = _temp_respawn_lowest.y;
+    }
+}
+
+x = x+hsp;
+y = y+vsp;
+
+[Draw event]
+draw_self();
+draw_text(x,y-64,'HEALTH: ' + string(hp));//RAT!
+draw_text(x,y-96,"STATE: " + string(state));//RAT!
+draw_text(x,y-128,"TARGET: " + string(target));//RAT!
+draw_sprite(spr_goon_cross,1,lx,ly);//RAT!
+
+draw_text(x,y-160,"BA_idle_aim: " + string(BA_idle_aim));//RAT!
+draw_text(x,y-192,"BA_enemy_aim: " + string(BA_enemy_aim));//RAT!
+draw_text(x,y-224,"BA_shooting_movement: " + string(BA_shooting_movement));//RAT!
